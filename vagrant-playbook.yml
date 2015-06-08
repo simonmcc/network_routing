@@ -1,0 +1,15 @@
+---
+- hosts: all
+  user: vagrant
+  sudo: True
+  roles:
+    - role: network_routing
+      network_source_routing:
+        - rt_table_id: 200
+          rt_table_name: public_source
+          source_dev: eth1
+          # traffic comes in on eth1, eth1 has 192.168.33.10
+          # so traffic should go back out the same interface
+          source_dev_ip: 192.168.33.10
+          source_gw: 192.168.33.1
+

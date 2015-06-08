@@ -1,0 +1,36 @@
+---
+
+- name: Install the required packages in Debian derivatives
+  apt: name={{ item }} state=installed update_cache=yes
+  with_items: network_pkgs
+  environment: env
+  when: ansible_os_family == 'Debian'
+
+- name: Create /etc/iproute2/rt_tables entry for each source route
+  lineinfile: >
+     regexp="^{{item.rt_table_id}}\W+{{item.rt_table_name}}"
+     line="{{item.rt_table_id}}\t{{item.rt_table_name}}"
+     dest=/etc/iproute2/rt_tables
+     state=present
+     insertafter=EOF
+  with_items: network_source_routing
+  when: network_source_routing is defined
+  register: rt_tables
+
+- name: Add ip rule for each source route
+  shell: ip rule add from {{item.source_dev_ip}} table {{item.rt_table_name}}
+  with_items: network_source_routing
+  # TODO: this misses out on correcting misconfigured routes, detect changes better
+  when: rt_tables|changed
+  register: source_rules
+
+- name: Create routes in each source route table
+  shell: ip route add default via {{item.source_gw}} dev {{item.source_dev}} table {{item.rt_table_name}}
+  with_items: network_source_routing
+  # TODO: this misses out on correcting misconfigured routes, detect changes better
+  when: rt_tables|changed
+  register: source_tables
+
+- name: Flush the ip route cache
+  shell: ip route flush cache
+  when: rt_tables|changed or source_tables|changed or source_rules|changed

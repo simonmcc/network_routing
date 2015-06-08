@@ -1,0 +1,6 @@
+---
+env:
+ RUNLEVEL: 1
+
+network_pkgs:
+  - iproute2
